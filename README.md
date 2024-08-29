@@ -25,19 +25,25 @@ To use the program:
 2. Then, execute the Python script. When running the Python script, make sure to specify the paths to the Blender output files in the Python project's config file.
 
 + Blender script
+  
   You can run the Blender script by copying the code into the scripting tab within the Blender program and executing it, or by following the appropriate method for running Blender scripts.
 
 + Python script
-  When running the Python script to convert Blender files to 3D-FRONT files, you need to pass the config file path as an argument:
-    python blender_to_front.py --config_file CONFIG_FILE_PATH
   
+  When running the Python script to convert Blender files to 3D-FRONT files, you need to pass the config file path as an argument:
+  ```
+  python blender_to_front.py --config_file CONFIG_FILE_PATH
+  ```
 <H3>
   Update the model_info file
 </H3>  
 Scene synthesis models based on ATISS use a `model_info.json` file, which contains information about furnitures, such as model ID, category, style, theme, material, and more.
 Manually updating the model info each time new scene data is added is inefficient, so we provide a script to automate this process.
 
+
 + Python script
-  To update the `model_info.json`, run the provided Python script, passing the config file path as an argument:
-  python update_model_info.py --config_file CONFIG_FILE_PATH
   
+  To update the `model_info.json`, run the provided Python script, passing the config file path as an argument:
+  ```
+  python update_model_info.py --config_file CONFIG_FILE_PATH
+  ```
