@@ -1,0 +1,158 @@
+import bpy, bmesh
+import pickle
+
+# a path for output data
+home_path = "E:\\Dropbox\\data\\blender_office\\3D_Blender_rotation_sominlee\\Interior\\"
+room_num = "room32"
+path = home_path+room_num+"\\"
+
+# generate mesh information
+obj_list = ['Walls.101-00-interior','Walls.143-00-interior', 'Walls.144', 'Walls.146','Walls.147'] # a list of mesh names
+mesh_type_list = ['WallInner','Floor','WallInner','WallInner','WallInner']
+file = open(path+"meshdata_"+room_num+".txt",'w') # mesh output file
+cnt = 0
+for obj_name in obj_list:
+    obj = bpy.data.objects.get(obj_name)
+    if obj == None:
+        print('none')
+        print(obj_name)
+        continue
+
+    if obj.mode == 'EDIT':
+        bm = bmesh.from_edit_mesh(obj.data)
+        vertices = bm.verts
+
+    else:
+        vertices = obj.data.vertices
+
+    verts = [(obj.matrix_world @ vert.co) for vert in vertices]
+    plain_verts = [vert.to_tuple() for vert in verts]
+    normals = [v.normal for v in obj.data.vertices]
+
+    uv_layer = obj.data.uv_layers.active.data if obj.data.uv_layers.active else None # convert to object mode
+    bpy.ops.object.mode_set(mode='OBJECT')
+    uvs = [uv_layer[loop.index].uv for loop in obj.data.loops]
+
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+
+    faces = []
+    for tri in mesh.loop_triangles:
+        faces.append(tri.vertices[:])
+
+    file.write('obj_name:'+str(obj_name)+'\n')
+    file.write('type:'+str(mesh_type_list[cnt])+'\n')
+    file.write('vertex:'+str(plain_verts)+'\n')
+    file.write('normals:'+str(normals)+'\n')
+    file.write('uvs:'+str(uvs)+'\n')
+    file.write('faces:'+str(faces)+'\n')
+    cnt += 1
+
+file.close()
+
+# generate extension information
+ext_list = []
+ext_type_list = []
+ext_file = open(path+"extensiondata_"+room_num+".txt",'w')
+
+cnt = 0
+for ext_obj_name in ext_list:
+    ext_obj = bpy.data.objects.get(ext_obj_name)
+    if ext_obj == None:
+        print('none')
+        print(ext_obj_name)
+        continue
+
+    if ext_obj.mode == 'EDIT':
+        ext_bm = bmesh.from_edit_mesh(ext_obj.data)
+        ext_vertices = ext_bm.verts
+    else:
+        ext_vertices = ext_obj.data.vertices
+
+    ext_verts = [(ext_obj.matrix_world @ ext_vert.co) for ext_vert in ext_vertices]
+    ext_plain_verts = [ext_vert.to_tuple() for ext_vert in ext_verts]
+
+    ext_normals = [v.normal for v in ext_obj.data.vertices]
+
+    ext_uv_layer = ext_obj.data.uv_layers.active.data if ext_obj.data.uv_layers.active else None
+    ext_uvs = [ext_uv_layer[loop.index].uv for loop in ext_obj.data.loops]
+
+    ext_faces=[]
+    for ext_f in ext_obj.data.polygons:
+       ext_face = []
+        for idx in ext_f.vertices:
+            ext_faces.append(ext_obj.data.vertices[idx].co)
+        ext_faces.append(ext_faces)
+
+    ext_file.write('obj_name:'+str(ext_obj_name)+'\n')
+    ext_file.write('type:'+str(ext_type_list[cnt])+'\n')
+    ext_file.write('vertex:'+str(ext_plain_verts)+'\n')
+    ext_file.write('normals:'+str(ext_normals)+'\n')
+    ext_file.write('uvs:'+str(ext_uvs)+'\n')
+    ext_file.write('faces:'+str(ext_faces)+'\n')
+ext_file.close()
+
+# generate furniture information
+fur_file = open(path+"furdata_"+room_num+".txt",'w')
+fur_list = ['office_table.062-00-interior','office_chair.018-00-interior','sofa.007-00-interior'] # a list of furniture names
+fur_type = [47,19,29] # a list of indexes of furniture categories
+
+idx = 0
+for fur_name in fur_list:
+    fur_file.write(str(fur_name)+':')
+    fur_file.write(str(fur_type[idx])+':')
+    fur_bbox = bpy.data.objects.get(fur_name).location
+    fur_file.write(str(fur_bbox[0])+','+str(fur_bbox[1])+','+str(fur_bbox[2])+'\n')
+    idx+=1
+fur_file.close()
+
+def adjust_quaternion(quaternion):
+    w, x, y, z = quaternion.w, quaternion.x, quaternion.y, quaternion.z
+    if z==0:
+        return (w,x,z,y)
+    else:
+        return (w, x, -z, y)
+
+
+def convert_position_to_simple3dviz(x, y, z):
+    if z==0:
+        return x, z, y
+    else:
+        return x, -z, y
+
+
+# generating scene object information
+file = open(path+"sceneobjdata"+room_num+".pickle",'wb')
+print(path+"sceneobjdata_"+room_num+".pickle")
+
+all_objects = bpy.data.objects
+all_obj_info = {}
+
+for obj in all_objects:
+    obj_name = obj.name
+    if 'Light' in obj_name:
+        continue
+
+    pos = obj.location
+
+    x,y,z = obj.location
+    x,y,z = convert_position_to_simple3dviz(x,y,z)
+    pos = [x,y,z]
+    rotation_euler = obj.rotation_euler
+    rotation_quaternion = rotation_euler.to_quaternion()
+
+    rot_w, rot_x, rot_y, rot_z = rotation_quaternion
+    rot =  [rot_w, rot_x, rot_y, rot_z]
+    scale = obj.scale
+    scale = list(scale[:3])
+    value = {'pos':pos, 'rot':rot, 'scale':scale}
+    obj_type = obj_name.split('_')[0]
+
+    if obj_type in all_obj_info.keys():
+        all_obj_info[obj_name].append(value)
+    else:
+        all_obj_info[obj_name] = [value]
+
+pickle.dump(all_obj_info, file)
+file.close()
+print('done')
